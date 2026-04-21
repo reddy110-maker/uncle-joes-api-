@@ -10,7 +10,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Set your Google Cloud project ID here
+# Google Cloud / BigQuery settings
 GCP_PROJECT = "uncle-joes-coffee"
 DATASET = "uncle_joes"
 
@@ -20,10 +20,10 @@ MENU_TABLE = f"{GCP_PROJECT}.{DATASET}.menu_items"
 # BigQuery client
 client = bigquery.Client(project=GCP_PROJECT)
 
-# CORS configuration so frontend can call backend from browser
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # You can restrict this later to your frontend URL if needed
+    allow_origins=["*"],  # you can restrict this later to your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,7 +31,7 @@ app.add_middleware(
 
 
 def rows_to_dicts(rows) -> List[Dict[str, Any]]:
-    """Convert BigQuery rows to normal Python dictionaries."""
+    """Convert BigQuery rows into normal Python dictionaries."""
     return [dict(row.items()) for row in rows]
 
 
@@ -79,7 +79,7 @@ def get_locations(
 
 
 @app.get("/locations/{location_id}")
-def get_location_by_id(location_id: int):
+def get_location_by_id(location_id: str):
     """
     Return a single location by ID.
     """
@@ -92,7 +92,7 @@ def get_location_by_id(location_id: int):
 
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ScalarQueryParameter("location_id", "INT64", location_id)
+            bigquery.ScalarQueryParameter("location_id", "STRING", location_id)
         ]
     )
 
@@ -148,7 +148,7 @@ def get_menu(
 
 
 @app.get("/menu/{item_id}")
-def get_menu_item_by_id(item_id: int):
+def get_menu_item_by_id(item_id: str):
     """
     Return a single menu item by ID.
     """
@@ -161,7 +161,7 @@ def get_menu_item_by_id(item_id: int):
 
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ScalarQueryParameter("item_id", "INT64", item_id)
+            bigquery.ScalarQueryParameter("item_id", "STRING", item_id)
         ]
     )
 
