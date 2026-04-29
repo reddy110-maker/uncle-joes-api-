@@ -204,7 +204,7 @@ class LoginRequest(BaseModel):
 def login(req: LoginRequest):
     """Authenticate a Coffee Club member by email and password."""
     query = f"""
-        SELECT id, first_name, last_name, email, phone, home_store, password_hash
+        SELECT id, first_name, last_name, email, home_store, password_hash
         FROM `{MEMBERS_TABLE}`
         WHERE LOWER(email) = LOWER(@email)
         LIMIT 1
