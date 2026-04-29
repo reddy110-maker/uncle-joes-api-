@@ -55,16 +55,11 @@ def get_locations(
     city: Optional[str] = Query(default=None, description="Filter by city name"),
     limit: int = Query(default=100, ge=1, le=500, description="Number of records to return"),
 ):
-    """
-    Return all locations.
-    Optional filtering by state and city.
-    """
     query = f"""
         SELECT *
         FROM `{LOCATIONS_TABLE}`
         WHERE 1=1
     """
-
     query_params = []
 
     if state:
@@ -89,28 +84,21 @@ def get_locations(
 
 @app.get("/locations/{location_id}")
 def get_location_by_id(location_id: str):
-    """
-    Return a single location by ID.
-    """
     query = f"""
         SELECT *
         FROM `{LOCATIONS_TABLE}`
         WHERE id = @location_id
         LIMIT 1
     """
-
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("location_id", "STRING", location_id)
         ]
     )
-
     try:
         results = list(client.query(query, job_config=job_config).result())
-
         if not results:
             raise HTTPException(status_code=404, detail="Location not found")
-
         return dict(results[0].items())
     except HTTPException:
         raise
@@ -128,16 +116,11 @@ def get_menu(
     size: Optional[str] = Query(default=None, description="Filter by size"),
     limit: int = Query(default=100, ge=1, le=500, description="Number of records to return"),
 ):
-    """
-    Return all menu items.
-    Optional filtering by category and size.
-    """
     query = f"""
         SELECT *
         FROM `{MENU_TABLE}`
         WHERE 1=1
     """
-
     query_params = []
 
     if category:
@@ -162,28 +145,21 @@ def get_menu(
 
 @app.get("/menu/{item_id}")
 def get_menu_item_by_id(item_id: str):
-    """
-    Return a single menu item by ID.
-    """
     query = f"""
         SELECT *
         FROM `{MENU_TABLE}`
         WHERE id = @item_id
         LIMIT 1
     """
-
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
             bigquery.ScalarQueryParameter("item_id", "STRING", item_id)
         ]
     )
-
     try:
         results = list(client.query(query, job_config=job_config).result())
-
         if not results:
             raise HTTPException(status_code=404, detail="Menu item not found")
-
         return dict(results[0].items())
     except HTTPException:
         raise
@@ -204,7 +180,7 @@ class LoginRequest(BaseModel):
 def login(req: LoginRequest):
     """Authenticate a Coffee Club member by email and password."""
     query = f"""
-        SELECT id, first_name, last_name, email, home_store, password_hash
+        SELECT id, first_name, last_name, email, home_store, password
         FROM `{MEMBERS_TABLE}`
         WHERE LOWER(email) = LOWER(@email)
         LIMIT 1
@@ -223,12 +199,12 @@ def login(req: LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     member = dict(results[0].items())
-    stored_hash = member["password_hash"]
+    stored_hash = member["password"]
 
     if not bcrypt.checkpw(req.password.encode("utf-8"), stored_hash.encode("utf-8")):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
-    member.pop("password_hash")
+    member.pop("password")
     return {"success": True, "member": member}
 
 
@@ -249,11 +225,12 @@ def get_member_orders(member_id: str):
             ARRAY_AGG(STRUCT(
                 oi.item_name,
                 oi.quantity,
+                oi.size,
                 oi.price
             )) AS items
         FROM `{ORDERS_TABLE}` o
         LEFT JOIN `{ORDER_ITEMS_TABLE}` oi ON o.order_id = oi.order_id
-        LEFT JOIN `{GCP_PROJECT}.{DATASET}.locations` l ON o.store_id = l.id
+        LEFT JOIN `{LOCATIONS_TABLE}` l ON o.store_id = l.id
         WHERE o.member_id = @member_id
         GROUP BY o.order_id, o.order_date, o.order_total, l.city, l.state
         ORDER BY o.order_date DESC
